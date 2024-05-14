@@ -1,0 +1,7 @@
+## Append samples you want in your CSV to this file as resources ##
+resources:
+- apps_v1_authentik.yaml
+- apps_v1_authentikuser.yaml
+- apps_v1_authentikgroup.yaml
+- apps_v1_authentikapplication.yaml
+#+kubebuilder:scaffold:manifestskustomizesamples

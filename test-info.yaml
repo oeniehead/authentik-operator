@@ -1,0 +1,30 @@
+apiVersion: apps.oeniehead.net/v1
+kind: AuthentikGroup
+metadata:
+  name: test-group
+spec:
+  name: test
+  isAdmin: false
+
+---
+
+apiVersion: apps.oeniehead.net/v1
+kind: AuthentikGroup
+metadata:
+  name: test-group2
+spec:
+  name: banaanmetjus
+  isAdmin: false
+
+---
+
+apiVersion: apps.oeniehead.net/v1
+kind: AuthentikUser
+metadata:
+  name: test-user
+spec:
+  name: Test Tester
+  username: tester
+  email: banaan@jus.nl
+  groups:
+    - test-group

@@ -1,0 +1,27 @@
+# permissions for end users to view authentikgroups.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: clusterrole
+    app.kubernetes.io/instance: authentikgroup-viewer-role
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/created-by: authentik-operator
+    app.kubernetes.io/part-of: authentik-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: authentikgroup-viewer-role
+rules:
+- apiGroups:
+  - apps.oeniehead.net
+  resources:
+  - authentikgroups
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - apps.oeniehead.net
+  resources:
+  - authentikgroups/status
+  verbs:
+  - get

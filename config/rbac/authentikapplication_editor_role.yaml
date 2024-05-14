@@ -1,0 +1,31 @@
+# permissions for end users to edit authentikapplications.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: clusterrole
+    app.kubernetes.io/instance: authentikapplication-editor-role
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/created-by: authentik-operator
+    app.kubernetes.io/part-of: authentik-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: authentikapplication-editor-role
+rules:
+- apiGroups:
+  - apps.oeniehead.net
+  resources:
+  - authentikapplications
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - apps.oeniehead.net
+  resources:
+  - authentikapplications/status
+  verbs:
+  - get
