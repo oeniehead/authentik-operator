@@ -59,6 +59,32 @@ rules:
 - apiGroups:
   - apps.oeniehead.net
   resources:
+  - authentikproviders
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - apps.oeniehead.net
+  resources:
+  - authentikproviders/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - apps.oeniehead.net
+  resources:
+  - authentikproviders/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - apps.oeniehead.net
+  resources:
   - authentikusers
   verbs:
   - create

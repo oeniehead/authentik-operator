@@ -1,21 +1,20 @@
 apiVersion: apps.oeniehead.net/v1
 kind: AuthentikGroup
 metadata:
-  name: test-group
+  name: first-group
 spec:
-  name: test
+  name: root-group
   isAdmin: false
-
 ---
 
 apiVersion: apps.oeniehead.net/v1
 kind: AuthentikGroup
 metadata:
-  name: test-group2
+  name: second-group
 spec:
-  name: banaanmetjus
+  name: sub-group
   isAdmin: false
-
+  parent: root-group
 ---
 
 apiVersion: apps.oeniehead.net/v1
@@ -27,4 +26,36 @@ spec:
   username: tester
   email: banaan@jus.nl
   groups:
-    - test-group
+    - sub-group
+
+---
+
+apiVersion: apps.oeniehead.net/v1
+kind: AuthentikProvider
+metadata:
+  name: test-provider
+spec:
+  name: test-provider
+  clientType: confidential
+  redirectUri: banaanmetjus.nl
+  authenticationFlow: default-authentication-flow
+  authorizationFlow: default-provider-authorization-implicit-consent
+  scopes:
+    - email
+    - openid
+    - profile
+
+---
+
+apiVersion: apps.oeniehead.net/v1
+kind: AuthentikApplication
+metadata:
+  name: test-application
+spec:
+  name: test-application
+  slug: test-app
+  group: test-apps
+  provider: test-provider
+  secretName: test-application-oauth
+  userGroups:
+    - root-group

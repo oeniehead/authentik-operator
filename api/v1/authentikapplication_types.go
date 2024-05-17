@@ -25,11 +25,18 @@ import (
 
 // AuthentikApplicationSpec defines the desired state of AuthentikApplication
 type AuthentikApplicationSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-
-	// Foo is an example field of AuthentikApplication. Edit authentikapplication_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	// Name of the application
+	Name string `json:"name"`
+	// URL slug
+	Slug string `json:"slug"`
+	// Group is used for application grouping within Authentik
+	Group string `json:"group"`
+	// The provider name to link this application to
+	Provider string `json:"provider"`
+	// Secretname that will contain the client ID and secret
+	SecretName string `json:"secretName"`
+	// Groups that allow access to this app
+	UserGroups []string `json:"userGroups"`
 }
 
 // AuthentikApplicationStatus defines the observed state of AuthentikApplication

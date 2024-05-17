@@ -101,7 +101,9 @@ func (r *AuthentikGroupReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 }
 
 func (r *AuthentikGroupReconciler) finalizeAuthentikGroup(ctx context.Context, reqLogger logr.Logger, m *appsv1.AuthentikGroup) error {
-	err := authentik.DeleteGroup(ctx, m.Spec.Name)
+	cl := authentik.GetClient(ctx)
+
+	err := authentik.DeleteGroup(&cl, m.Spec.Name)
 
 	if err != nil {
 		return err
@@ -112,12 +114,17 @@ func (r *AuthentikGroupReconciler) finalizeAuthentikGroup(ctx context.Context, r
 }
 
 func (r *AuthentikGroupReconciler) createOrUpdateAuthentikGroup(ctx context.Context, reqLogger logr.Logger, m *appsv1.AuthentikGroup) error {
+	parent := api.NewNullableString(m.Spec.Parent)
+
 	group := api.Group{
 		Name:        m.Spec.Name,
 		IsSuperuser: &m.Spec.IsAdmin,
+		Parent:      *parent,
 	}
 
-	_, err := authentik.CreateOrUpdateGroup(ctx, &group)
+	cl := authentik.GetClient(ctx)
+
+	_, err := authentik.CreateGroup(&cl, &group)
 
 	if err != nil {
 		return err

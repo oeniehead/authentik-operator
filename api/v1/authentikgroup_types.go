@@ -23,9 +23,14 @@ import (
 // AuthentikGroupSpec defines the desired state of AuthentikGroup
 type AuthentikGroupSpec struct {
 	// The name of the group
-	Name string `json:"name,omitempty"`
+	// +kubebuilder:validation:Required
+	Name string `json:"name"`
 	// If this group is administrative
-	IsAdmin bool `json:"isAdmin,omitempty"`
+	// +kubebuilder:validation:Required
+	IsAdmin bool `json:"isAdmin"`
+	// The parent of this group
+	// +optional
+	Parent *string `json:"parent,omitempty"`
 }
 
 // AuthentikGroupStatus defines the observed state of AuthentikGroup

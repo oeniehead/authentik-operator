@@ -40,10 +40,33 @@ spec:
           spec:
             description: AuthentikApplicationSpec defines the desired state of AuthentikApplication
             properties:
-              foo:
-                description: Foo is an example field of AuthentikApplication. Edit
-                  authentikapplication_types.go to remove/update
+              group:
+                description: Group is used for application grouping within Authentik
                 type: string
+              name:
+                description: Name of the application
+                type: string
+              provider:
+                description: The provider name to link this application to
+                type: string
+              secretName:
+                description: Secretname that will contain the client ID and secret
+                type: string
+              slug:
+                description: URL slug
+                type: string
+              userGroups:
+                description: Groups that allow access to this app
+                items:
+                  type: string
+                type: array
+            required:
+            - group
+            - name
+            - provider
+            - secretName
+            - slug
+            - userGroups
             type: object
           status:
             description: AuthentikApplicationStatus defines the observed state of

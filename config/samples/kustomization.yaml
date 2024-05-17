@@ -4,4 +4,5 @@ resources:
 - apps_v1_authentikuser.yaml
 - apps_v1_authentikgroup.yaml
 - apps_v1_authentikapplication.yaml
+- apps_v1_authentikprovider.yaml
 #+kubebuilder:scaffold:manifestskustomizesamples

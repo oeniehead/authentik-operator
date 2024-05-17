@@ -1,0 +1,94 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.14.0
+  name: authentikproviders.apps.oeniehead.net
+spec:
+  group: apps.oeniehead.net
+  names:
+    kind: AuthentikProvider
+    listKind: AuthentikProviderList
+    plural: authentikproviders
+    singular: authentikprovider
+  scope: Namespaced
+  versions:
+  - name: v1
+    schema:
+      openAPIV3Schema:
+        description: AuthentikProvider is the Schema for the authentikproviders API
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: AuthentikProviderSpec defines the desired state of AuthentikProvider
+            properties:
+              authenticationFlow:
+                description: Authentication flow for this application
+                type: string
+                x-kubernetes-validations:
+                - message: Value is immutable
+                  rule: self == oldSelf
+              authorizationFlow:
+                description: Authorization flow for this application
+                type: string
+                x-kubernetes-validations:
+                - message: Value is immutable
+                  rule: self == oldSelf
+              clientType:
+                description: 'Type of client, one of: confidential'
+                type: string
+                x-kubernetes-validations:
+                - message: Value is immutable
+                  rule: self == oldSelf
+              name:
+                description: Name of the provider
+                type: string
+                x-kubernetes-validations:
+                - message: Value is immutable
+                  rule: self == oldSelf
+              redirectUri:
+                description: Valid redirect URI
+                type: string
+                x-kubernetes-validations:
+                - message: Value is immutable
+                  rule: self == oldSelf
+              scopes:
+                description: All requested scopes for the application
+                items:
+                  type: string
+                type: array
+                x-kubernetes-validations:
+                - message: Value is immutable
+                  rule: self == oldSelf
+              type:
+                description: 'Type of authentication, one of: oauth2'
+                type: string
+                x-kubernetes-validations:
+                - message: Value is immutable
+                  rule: self == oldSelf
+            type: object
+          status:
+            description: AuthentikProviderStatus defines the observed state of AuthentikProvider
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

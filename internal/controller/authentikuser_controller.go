@@ -18,6 +18,10 @@ package controller
 
 import (
 	"context"
+	"github.com/go-logr/logr"
+	"goauthentik.io/api/v3"
+	"k8s.io/apimachinery/pkg/api/errors"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -25,6 +29,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	appsv1 "github.com/oeniehead/authentik-operator/api/v1"
+	authentik "github.com/oeniehead/authentik-operator/internal/api"
 )
 
 // AuthentikUserReconciler reconciles a AuthentikUser object
@@ -47,11 +52,95 @@ type AuthentikUserReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.15.0/pkg/reconcile
 func (r *AuthentikUserReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = log.FromContext(ctx)
+	reqLogger := log.FromContext(ctx)
 
-	// TODO(user): your logic here
+	// Fetch the AuthentikGroup instance
+	authentikUser := &appsv1.AuthentikUser{}
+	err := r.Get(ctx, req.NamespacedName, authentikUser)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			reqLogger.Info("AuthentikUser resource not found. Ignoring since object must be deleted.")
+			return ctrl.Result{}, nil
+		}
+		// Error reading the object - requeue the request.
+		reqLogger.Error(err, "Failed to get AuthentikUser.")
+		return ctrl.Result{}, err
+	}
+
+	// Check if the AuthentikGroup instance is marked to be deleted, which is
+	// indicated by the deletion timestamp being set.
+	isAuthentikUserMarkedToBeDeleted := authentikUser.GetDeletionTimestamp() != nil
+
+	if isAuthentikUserMarkedToBeDeleted {
+		if controllerutil.ContainsFinalizer(authentikUser, authentikFinalizer) {
+			if err := r.finalizeAuthentikUser(ctx, reqLogger, authentikUser); err != nil {
+				return ctrl.Result{}, err
+			}
+			controllerutil.RemoveFinalizer(authentikUser, authentikFinalizer)
+			err := r.Update(ctx, authentikUser)
+			if err != nil {
+				return ctrl.Result{}, err
+			}
+		}
+		return ctrl.Result{}, nil
+	} else {
+		// The deletion timestamp is not set, so create/update the resource in Authentik
+		if err := r.createOrUpdateAuthentikUser(ctx, reqLogger, authentikUser); err != nil {
+			return ctrl.Result{}, err
+		}
+
+		reqLogger.Info("Processed user", "userName", authentikUser.Spec.Username)
+	}
+
+	// Add the finalizer to any CRD that does not have it yet
+	if !controllerutil.ContainsFinalizer(authentikUser, authentikFinalizer) {
+		controllerutil.AddFinalizer(authentikUser, authentikFinalizer)
+		err := r.Update(ctx, authentikUser)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+	}
 
 	return ctrl.Result{}, nil
+}
+
+func (r *AuthentikUserReconciler) finalizeAuthentikUser(ctx context.Context, reqLogger logr.Logger, m *appsv1.AuthentikUser) error {
+	cl := authentik.GetClient(ctx)
+
+	err := authentik.DeleteUser(&cl, m.Spec.Name)
+
+	if err != nil {
+		return err
+	}
+
+	reqLogger.Info("Successfully deleted AuthentikUser")
+	return nil
+}
+
+func (r *AuthentikUserReconciler) createOrUpdateAuthentikUser(ctx context.Context, reqLogger logr.Logger, m *appsv1.AuthentikUser) error {
+	user := api.User{
+		Name:     m.Spec.Name,
+		Username: m.Spec.Username,
+		Email:    &m.Spec.Email,
+		Groups:   m.Spec.Groups,
+	}
+
+	cl := authentik.GetClient(ctx)
+
+	newUser, err := authentik.CreateUser(&cl, &user)
+
+	if err != nil {
+		return err
+	}
+
+	err = authentik.SynchronizeGroups(&cl, newUser, m.Spec.Groups)
+
+	if err != nil {
+		return err
+	}
+
+	reqLogger.Info("Successfully created/updated AuthentikUser")
+	return nil
 }
 
 // SetupWithManager sets up the controller with the Manager.

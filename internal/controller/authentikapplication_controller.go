@@ -18,6 +18,12 @@ package controller
 
 import (
 	"context"
+	"fmt"
+	"github.com/go-logr/logr"
+	authentik "github.com/oeniehead/authentik-operator/internal/api"
+	"goauthentik.io/api/v3"
+	"k8s.io/apimachinery/pkg/api/errors"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -47,11 +53,126 @@ type AuthentikApplicationReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.15.0/pkg/reconcile
 func (r *AuthentikApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = log.FromContext(ctx)
+	reqLogger := log.FromContext(ctx)
 
-	// TODO(user): your logic here
+	// Fetch the AuthentikGroup instance
+	authentikApplication := &appsv1.AuthentikApplication{}
+	err := r.Get(ctx, req.NamespacedName, authentikApplication)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			reqLogger.Info("AuthentikApplication resource not found. Ignoring since object must be deleted.")
+			return ctrl.Result{}, nil
+		}
+		// Error reading the object - requeue the request.
+		reqLogger.Error(err, "Failed to get AuthentikApplication.")
+		return ctrl.Result{}, err
+	}
+
+	// Check if the AuthentikApplication instance is marked to be deleted, which is
+	// indicated by the deletion timestamp being set.
+	isAuthentikUserMarkedToBeDeleted := authentikApplication.GetDeletionTimestamp() != nil
+
+	if isAuthentikUserMarkedToBeDeleted {
+		if controllerutil.ContainsFinalizer(authentikApplication, authentikFinalizer) {
+			if err := r.finalizeAuthentikApplication(ctx, reqLogger, authentikApplication); err != nil {
+				return ctrl.Result{}, err
+			}
+			controllerutil.RemoveFinalizer(authentikApplication, authentikFinalizer)
+			err := r.Update(ctx, authentikApplication)
+			if err != nil {
+				return ctrl.Result{}, err
+			}
+		}
+		return ctrl.Result{}, nil
+	} else {
+		// The deletion timestamp is not set, so create/update the resource in Authentik
+		if err := r.createOrUpdateAuthentikApplication(ctx, reqLogger, authentikApplication); err != nil {
+			return ctrl.Result{}, err
+		}
+
+		reqLogger.Info("Processed application", "userName", authentikApplication.Spec.Name)
+	}
+
+	// Add the finalizer to any CRD that does not have it yet
+	if !controllerutil.ContainsFinalizer(authentikApplication, authentikFinalizer) {
+		controllerutil.AddFinalizer(authentikApplication, authentikFinalizer)
+		err := r.Update(ctx, authentikApplication)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+	}
 
 	return ctrl.Result{}, nil
+}
+
+func (r *AuthentikApplicationReconciler) finalizeAuthentikApplication(ctx context.Context, reqLogger logr.Logger, m *appsv1.AuthentikApplication) error {
+	cl := authentik.GetClient(ctx)
+
+	err := authentik.DeleteApplication(&cl, m.Spec.Name)
+
+	if err != nil {
+		return err
+	}
+
+	reqLogger.Info("Successfully deleted AuthentikApplication")
+	return nil
+}
+
+func (r *AuthentikApplicationReconciler) createOrUpdateAuthentikApplication(ctx context.Context, reqLogger logr.Logger, m *appsv1.AuthentikApplication) error {
+	cl := authentik.GetClient(ctx)
+
+	existingApplication, err := authentik.GetApplication(&cl, m.Spec.Name)
+	if err != nil {
+		return err
+	}
+
+	if existingApplication == nil {
+		existingProvider, err := authentik.GetProvider(&cl, m.Spec.Provider)
+		if err != nil {
+			return err
+		}
+		if existingProvider == nil {
+			return fmt.Errorf("provider %s not found", m.Spec.Provider)
+		}
+
+		application := api.Application{
+			Name:     m.Spec.Name,
+			Slug:     m.Spec.Slug,
+			Group:    &m.Spec.Group,
+			Provider: *api.NewNullableInt32(&existingProvider.Pk),
+		}
+
+		existingApplication, err = authentik.CreateApplication(&cl, &application)
+
+		if err != nil {
+			return err
+		}
+	}
+
+	for _, groupName := range m.Spec.UserGroups {
+		group, err := authentik.GetGroup(&cl, groupName)
+		if err != nil {
+			return err
+		}
+		if group == nil {
+			return fmt.Errorf("group %s not found", groupName)
+		}
+
+		binding, err := authentik.GetGroupBinding(&cl, existingApplication.Pk, group.Pk)
+		if err != nil {
+			return err
+		}
+
+		if binding == nil {
+			err := authentik.BindApplicationToGroup(&cl, existingApplication.Pk, group.Pk)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	reqLogger.Info("Successfully created AuthentikApplication")
+	return nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
