@@ -1,0 +1,12 @@
+apiVersion: apps.oeniehead.net/v1
+kind: AuthentikProvider
+metadata:
+  labels:
+    app.kubernetes.io/name: authentikprovider
+    app.kubernetes.io/instance: authentikprovider-sample
+    app.kubernetes.io/part-of: authentik-operator
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: authentik-operator
+  name: authentikprovider-sample
+spec:
+  # TODO(user): Add fields here

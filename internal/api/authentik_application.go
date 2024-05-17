@@ -24,28 +24,28 @@ func CreateApplication(cl *AuthentikApiClient, application *api.Application) (*a
 	return newApplication, nil
 }
 
-func GetApplication(cl *AuthentikApiClient, name string) (*api.Application, error) {
+func GetApplication(cl *AuthentikApiClient, slug string) (*api.Application, error) {
 	apiClient := cl.apiClient
 	authCtx := cl.ctx
 
-	resp, _, err := apiClient.CoreApi.CoreApplicationsList(authCtx).Name(name).Execute()
+	application, _, err := apiClient.CoreApi.CoreApplicationsRetrieve(authCtx, slug).Execute()
 
 	if err != nil {
 		return nil, err
 	}
 
-	if len(resp.Results) == 0 {
+	if application == nil {
 		return nil, nil
 	} else {
-		return &resp.Results[0], nil
+		return application, nil
 	}
 }
 
-func DeleteApplication(cl *AuthentikApiClient, application string) error {
+func DeleteApplication(cl *AuthentikApiClient, slug string) error {
 	apiClient := cl.apiClient
 	authCtx := cl.ctx
 
-	existingApplication, err := GetApplication(cl, application)
+	existingApplication, err := GetApplication(cl, slug)
 
 	if err != nil {
 		return err
