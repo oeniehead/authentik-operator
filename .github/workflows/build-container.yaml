@@ -1,0 +1,102 @@
+name: "Build Containers"
+
+on:
+  schedule:
+    # https://crontab.guru/#0_0_*_*_SUN
+    - cron: '0 0 * * SUN'
+  push:
+    branches: [ "main" ]
+
+env:
+  # Docker registry
+  REGISTRY: ghcr.io
+  # github.repository as <account>/<repo>
+  IMAGE_NAME_BASE: ${{ github.repository }}
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      # This is used to complete the identity challenge
+      # with sigstore/fulcio when running outside of PRs.
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      - name: Setup Go 1.21.x
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21.x'
+      # Set up BuildKit Docker container builder to be able to build multi-platform images and export cache
+      # https://github.com/docker/setup-buildx-action
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3.3.0
+
+      # Ensure that IMAGE_NAME_BASE is all lowercase
+      - name: Lowercase IMAGE_NAME_BASE
+        run: |
+          echo "IMAGE_NAME_BASE=${IMAGE_NAME_BASE,,}" >>${GITHUB_ENV}
+
+      # Build operator
+      - name: Build operator
+        run: |
+          make manifests build
+
+      # Install the cosign tool
+      # https://github.com/sigstore/cosign-installer
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3.5.0
+        with:
+          cosign-release: 'v2.2.4'
+
+      # Login against a Docker registry
+      # https://github.com/docker/login-action
+      - name: Log into registry ${{ env.REGISTRY }}
+        uses: docker/login-action@v3.1.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: "Extract Docker metadata: operator"
+        id: meta
+        uses: docker/metadata-action@v5.5.1
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}
+          tags: |
+            type=raw,value=stable,enable={{is_default_branch}}
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=schedule,pattern={{date 'YYYYMMDD'}}
+
+      # Build and push Docker image for zfs
+      # For linux/amd64 only
+      # https://github.com/docker/build-push-action
+      - name: "Build and push Docker image: zfs"
+        id: build-and-push
+        uses: docker/build-push-action@v5.3.0
+        with:
+          context: .
+          push: true
+          build-args: |
+            BUILDER_VERSION=${{ env.BUILDER_VERSION }}
+          platforms: "linux/amd64"
+          tags: ${{ github.sha }}
+          file: ./Dockerfile
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Sign the resulting Docker images digests.
+      # This will only write to the public Rekor transparency log when the Docker repository is public to avoid leaking data.
+      # https://github.com/sigstore/cosign
+      - name: Sign the published Docker images
+        env:
+          # https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions#using-an-intermediate-environment-variable
+          TAGS_ZFS: ${{ steps.meta.outputs.tags }}
+          DIGEST_ZFS: ${{ steps.build-and-push.outputs.digest }}
+        # This step uses the identity token to provision an ephemeral certificate against the sigstore community Fulcio instance.
+        run: |
+          echo "${TAGS}" | xargs -I {} cosign sign --yes {}@${DIGEST}
