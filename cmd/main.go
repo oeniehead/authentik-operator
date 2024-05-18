@@ -17,10 +17,7 @@ limitations under the License.
 package main
 
 import (
-	"crypto/tls"
 	"flag"
-	"net/http"
-	"net/url"
 	"os"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
@@ -52,9 +49,9 @@ func init() {
 }
 
 func main() {
-	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
-	proxyurl, err := url.Parse("http://127.0.0.1:9001")
-	http.DefaultTransport.(*http.Transport).Proxy = http.ProxyURL(proxyurl)
+	//http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+	//proxyurl, err := url.Parse("http://127.0.0.1:9001")
+	//http.DefaultTransport.(*http.Transport).Proxy = http.ProxyURL(proxyurl)
 
 	var metricsAddr string
 	var enableLeaderElection bool
