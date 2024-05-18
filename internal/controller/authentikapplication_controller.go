@@ -125,10 +125,7 @@ func (r *AuthentikApplicationReconciler) finalizeAuthentikApplication(ctx contex
 func (r *AuthentikApplicationReconciler) createOrUpdateAuthentikApplication(ctx context.Context, reqLogger logr.Logger, m *appsv1.AuthentikApplication) error {
 	cl := authentik.GetClient(ctx)
 
-	existingApplication, err := authentik.GetApplication(&cl, m.Spec.Slug)
-	if err != nil {
-		return err
-	}
+	existingApplication, _ := authentik.GetApplication(&cl, m.Spec.Slug)
 
 	existingProvider, err := authentik.GetProvider(&cl, m.Spec.Provider)
 	if err != nil {
