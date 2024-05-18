@@ -69,7 +69,7 @@ func SynchronizeGroups(cl *AuthentikApiClient, existingUser *api.User, targetGro
 		}
 
 		if group == nil {
-			return fmt.Errorf("group %s not found", group)
+			return fmt.Errorf("group with id %s not found", groupId)
 		}
 
 		existingGroups = append(existingGroups, group.Name)
